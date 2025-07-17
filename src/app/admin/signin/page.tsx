@@ -1,12 +1,18 @@
 "use client";
 
 import { auth } from "@/lib/firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { showErrorToast, Toaster } from "@/components/useErrorToast";
+import {
+    signInWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup,
+} from "firebase/auth";
+import { showErrorToast } from "@/components/useErrorToast";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 export default function SignInPage() {
     const [email, setEmail] = useState("");
@@ -43,10 +49,10 @@ export default function SignInPage() {
                 }}
                 aria-label="Sign in form"
             >
-                <label htmlFor="email" className="sr-only">
+                <Label htmlFor="email" className="sr-only">
                     Email
-                </label>
-                <input
+                </Label>
+                <Input
                     id="email"
                     type="email"
                     placeholder="Email"
@@ -56,10 +62,10 @@ export default function SignInPage() {
                     required
                     autoComplete="email"
                 />
-                <label htmlFor="password" className="sr-only">
+                <Label htmlFor="password" className="sr-only">
                     Password
-                </label>
-                <input
+                </Label>
+                <Input
                     id="password"
                     type="password"
                     placeholder="Password"
@@ -69,27 +75,27 @@ export default function SignInPage() {
                     required
                     autoComplete="current-password"
                 />
-                <button
+                <Button
                     type="submit"
                     className="bg-blue-500 text-white px-4 py-2 rounded"
                 >
                     Sign In
-                </button>
+                </Button>
             </form>
-            <button
+            <Button
                 onClick={handleGoogleSignIn}
                 className="bg-red-500 text-white px-4 py-2 rounded mt-2"
                 aria-label="Sign in with Google"
+                variant="default"
             >
                 Sign in with Google
-            </button>
+            </Button>
             <p className="mt-2">
                 Don't have an account?{" "}
                 <Link href="/admin/signup" className="text-blue-500 underline">
                     Sign Up
                 </Link>
             </p>
-            <Toaster />
         </main>
     );
 }

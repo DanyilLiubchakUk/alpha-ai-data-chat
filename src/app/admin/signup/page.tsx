@@ -4,7 +4,10 @@ import { auth } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { showErrorToast, Toaster } from "@/components/useErrorToast";
+import { showErrorToast } from "@/components/useErrorToast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function SignUpPage() {
     const [email, setEmail] = useState("");
@@ -28,10 +31,10 @@ export default function SignUpPage() {
                 onSubmit={handleSignUp}
                 className="flex flex-col items-center w-full max-w-xs"
             >
-                <label htmlFor="email" className="sr-only">
+                <Label htmlFor="email" className="sr-only">
                     Email
-                </label>
-                <input
+                </Label>
+                <Input
                     id="email"
                     type="email"
                     placeholder="Email"
@@ -41,10 +44,10 @@ export default function SignUpPage() {
                     required
                     autoComplete="email"
                 />
-                <label htmlFor="password" className="sr-only">
+                <Label htmlFor="password" className="sr-only">
                     Password
-                </label>
-                <input
+                </Label>
+                <Input
                     id="password"
                     type="password"
                     placeholder="Password"
@@ -54,14 +57,13 @@ export default function SignUpPage() {
                     required
                     autoComplete="new-password"
                 />
-                <button
+                <Button
                     type="submit"
                     className="bg-green-500 text-white px-4 py-2 rounded w-full"
                 >
                     Sign Up
-                </button>
+                </Button>
             </form>
-            <Toaster />
         </main>
     );
 }
