@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
     useReactTable,
     getCoreRowModel,
@@ -6,26 +6,73 @@ import {
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { showErrorToast } from "@/components/useErrorToast";
 
-// Each chat is an array of { user: string, ai: string }
 type ChatHistory = Array<{ user: string; ai: string }>;
 
-const initialChats: ChatHistory[] = [
-    [
-        { user: "Hello", ai: "Hi! How can I help you?" },
-        { user: "What's the weather?", ai: "It's sunny today." },
-    ],
-    [{ user: "Tell me a joke.", ai: "Why did the chicken cross the road?..." }],
-];
+interface ChatDocument {
+    docId: string;
+    chat: ChatHistory;
+}
 
 export default function ViewHistory() {
-    const [chats, setChats] = useState<ChatHistory[]>(initialChats);
+    const [chatHistory, setChatHistory] = useState<ChatDocument[]>([]);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
-    const handleDelete = (idx: number) => {
-        setChats((prev) => prev.filter((_, i) => i !== idx));
+    useEffect(() => {
+        const fetchChats = async () => {
+            try {
+                const response = await fetch("/api/manage-data", {
+                    method: "POST",
+                    body: JSON.stringify({ action: "get-all-chats" }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const result = data.chats.map((doc: any) => ({
+                        docId: doc.docId,
+                        chat: doc.chatHistory
+                            .slice(1)
+                            .filter((_: any, i: any) => i % 2 === 0)
+                            .map((userMessage: any, i: any) => ({
+                                user: userMessage.text,
+                                ai: doc.chatHistory[i * 2 + 2].text,
+                            })),
+                    }));
+                    setChatHistory(result);
+                } else {
+                    showErrorToast(data.error, "Failed to fetch chat history");
+                }
+            } catch (error: any) {
+                showErrorToast(error, "Failed to fetch chat history");
+            }
+        };
+        fetchChats();
+    }, []);
+
+    const handleDelete = async (docId: string) => {
+        setDeletingId(docId);
+        try {
+            const response = await fetch("/api/manage-data", {
+                method: "POST",
+                body: JSON.stringify({ action: "delete-chat", docId: docId }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                setChatHistory((prev) =>
+                    prev.filter((chat) => chat.docId !== docId)
+                );
+                setDeletingId(null);
+            } else {
+                showErrorToast(data.error, "Failed to delete chat");
+                setDeletingId(null);
+            }
+        } catch (error: any) {
+            showErrorToast(error, "Failed to delete chat");
+            setDeletingId(null);
+        }
     };
 
-    if (!chats || chats.length === 0) {
+    if (!chatHistory || chatHistory.length === 0) {
         return (
             <section
                 className="h-full p-4 overflow-y-auto"
@@ -56,23 +103,26 @@ export default function ViewHistory() {
                 </p>
             </header>
             <div className="space-y-8">
-                {chats.map((chat, chatIdx) => (
+                {chatHistory.map((chat, chatIdx) => (
                     <article
-                        key={chatIdx}
+                        key={chat.docId}
                         aria-label={`Chat session ${chatIdx + 1}`}
-                        className="relative rounded shadow-sm"
+                        className={`relative rounded shadow-sm ${
+                            deletingId === chat.docId ? "opacity-50" : ""
+                        }`}
                     >
                         <Button
                             type="button"
                             variant="ghost"
                             size="icon"
                             aria-label="Delete chat history"
-                            onClick={() => handleDelete(chatIdx)}
+                            onClick={() => handleDelete(chat.docId)}
+                            disabled={deletingId === chat.docId}
                             className="absolute top-0.5 right-2 z-10 w-6 h-6 rounded-full text-gray-400 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
                         >
                             &#10005;
                         </Button>
-                        <ChatTable chat={chat} chatIdx={chatIdx} />
+                        <ChatTable chat={chat.chat} chatIdx={chat.docId} />
                     </article>
                 ))}
             </div>
@@ -80,7 +130,7 @@ export default function ViewHistory() {
     );
 }
 
-function ChatTable({ chat, chatIdx }: { chat: ChatHistory; chatIdx: number }) {
+function ChatTable({ chat, chatIdx }: { chat: ChatHistory; chatIdx: string }) {
     const columns = useMemo(
         () => [
             {

@@ -1,162 +1,109 @@
 "use client";
 
-import { useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { showErrorToast } from "@/components/useErrorToast";
-
-const collectionOptions = [
-    { value: "let-ai", label: "AI decides" },
-    { value: "users", label: "Users" },
-    { value: "orders", label: "Orders" },
-    { value: "products", label: "Products" },
-];
-
-const formSchema = z.object({
-    data: z
-        .string()
-        .min(1, "Data is required")
-        .refine((val) => val.trim().length !== 0, {
-            message: "No empty data",
-        }),
-    ai: z.boolean(),
-    collection: z.string().min(1, "Collection is required"),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import { useRef } from "react";
+import { Label } from "@/components/ui/label";
+import { useFilesStore } from "@/store/filesStore";
 
 export default function AddNewData() {
-    const {
-        control,
-        register,
-        handleSubmit,
-        reset,
-        watch,
-        formState: { errors, isSubmitting },
-    } = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            data: "",
-            ai: true,
-            collection: "",
-        },
-    });
+    const { refreshFiles } = useFilesStore();
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const aiValue = watch("ai");
+    const handleFileUpload = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const files = fileInputRef.current?.files;
+        if (!files || files.length === 0) {
+            showErrorToast(
+                null,
+                "Please select at least one .txt file to upload."
+            );
+            return;
+        }
 
-    useEffect(() => {
-        if (errors.data) showErrorToast(errors.data);
-        if (errors.collection) showErrorToast(errors.collection);
-    }, [errors]);
+        // Check if all files are .txt
+        const invalidFile = Array.from(files).find(
+            (file) => !file.name.toLowerCase().endsWith(".txt")
+        );
+        if (invalidFile) {
+            showErrorToast(null, "Only .txt files are allowed");
+            return;
+        }
 
-    const onSubmit = async (values: FormValues) => {
+        const formData = new FormData();
+        Array.from(files).forEach((file) => {
+            formData.append("files", file);
+        });
+
+        setUploading(true);
+
         try {
-            // Add to the selected collection in Firestore
+            const response = await fetch("/api/upload-data", {
+                method: "POST",
+                body: formData,
+            });
 
-            reset();
-        } catch (error: any) {
-            showErrorToast(error.message || "Failed to add data.");
+            const result = await response.json();
+            if (!result.success) {
+                showErrorToast(result.error, "Upload failed");
+                return;
+            }
+
+            refreshFiles();
+            showErrorToast(null, "Files uploaded successfully");
+
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+        } catch (err: any) {
+            console.error(err);
+            showErrorToast(err, "Upload error");
+        } finally {
+            setUploading(false);
         }
     };
 
     return (
         <section
-            className="h-full p-4 overflow-y-auto"
-            aria-labelledby="manager-panel-heading"
+            className="p-4 flex flex-col items-center"
+            aria-labelledby="add-data-heading"
         >
-            <header>
-                <h1
-                    id="manager-panel-heading"
-                    className="text-lg font-semibold mb-2"
-                >
-                    Manager Panel
-                </h1>
-                <h2 className="text-sm text-gray-500 mb-4">
-                    Add new data to the database.
-                </h2>
-            </header>
-            <form
-                className="space-y-4"
-                onSubmit={handleSubmit(onSubmit)}
-                aria-label="Manager Data Form"
+            <h1
+                id="add-data-heading"
+                className="text-2xl font-semibold mb-4 text-center"
             >
-                <div className="flex flex-col gap-2">
-                    <Label htmlFor="data" className="block pl-2">
-                        New Data
-                    </Label>
-                    <Textarea
-                        id="data"
-                        placeholder="Put new data"
-                        {...register("data")}
-                        className="resize-none max-h-48"
-                        rows={4}
-                        aria-required="true"
-                        aria-invalid={!!errors.data}
-                    />
-                </div>
-                <div className="flex gap-8 pl-2">
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="ai"
-                            {...register("ai")}
-                            defaultChecked
-                            aria-checked={aiValue}
-                        />
-                        <Label htmlFor="ai">AI</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Controller
-                            name="collection"
-                            control={control}
-                            render={({ field }) => (
-                                <Select
-                                    onValueChange={field.onChange}
-                                    value={field.value}
-                                >
-                                    <SelectTrigger
-                                        id="collection"
-                                        aria-required="true"
-                                        aria-invalid={!!errors.collection}
-                                    >
-                                        <SelectValue placeholder="Select a collection" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-gray-100">
-                                        {collectionOptions.map((option) => (
-                                            <SelectItem
-                                                key={option.value}
-                                                value={option.value}
-                                            >
-                                                {option.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            )}
-                        />
-                        <Label htmlFor="collection" className="mb-1 block">
-                            Database Collection
-                        </Label>
-                    </div>
-                </div>
+                Upload New Company Data
+            </h1>
+            <form
+                onSubmit={handleFileUpload}
+                aria-labelledby="add-data-heading"
+                className="flex flex-col items-center w-full"
+            >
+                <Label htmlFor="file-upload" className="mb-2 w-full text-left">
+                    Select .txt files to upload
+                </Label>
+                <input
+                    id="file-upload"
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".txt"
+                    multiple
+                    disabled={uploading}
+                    className="border p-2 mb-2 w-full rounded"
+                />
                 <Button
                     type="submit"
-                    disabled={isSubmitting}
-                    className="w-full"
-                    aria-busy={isSubmitting}
+                    disabled={uploading}
+                    aria-busy={uploading}
+                    className="bg-blue-500 text-white px-4 py-2 rounded w-full flex items-center justify-center max-w-min"
                 >
-                    {isSubmitting ? "Sending..." : "Send"}
+                    {uploading ? (
+                        <span className="flex items-center">Uploading...</span>
+                    ) : (
+                        "Upload"
+                    )}
                 </Button>
             </form>
         </section>
