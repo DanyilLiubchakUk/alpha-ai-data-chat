@@ -217,7 +217,7 @@ Your answer:
                     content: messageContent,
                 },
             ],
-            model: "mistralai/Mistral-7B-Instruct-v0.3:novita",
+            model: "meta-llama/Llama-3.1-8B-Instruct:novita",
             temperature: 0,
         };
 
@@ -292,7 +292,7 @@ Standalone Question:
                     content: messageContent,
                 },
             ],
-            model: "mistralai/Mistral-7B-Instruct-v0.3:novita",
+            model: "meta-llama/Llama-3.1-8B-Instruct:novita",
             temperature: 0,
         };
 
